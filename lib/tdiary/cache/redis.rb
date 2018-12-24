@@ -1,3 +1,4 @@
+require 'connection_pool'
 require 'redis'
 require 'redis-namespace'
 require 'yaml'
@@ -82,11 +83,17 @@ module TDiary
 		end
 
 		def redis
-			@@_client ||= if @tdiary.conf.user_name
-								 Redis::Namespace.new(@tdiary.conf.user_name.to_sym, redis: Redis.new)
-							 else
-								 Redis.new
-							 end
+			@@_client ||= ConnectionPool::Wrapper.new(size: connection_pool_size) do
+									if @tdiary.conf.user_name
+									Redis::Namespace.new(@tdiary.conf.user_name.to_sym, redis: Redis.new)
+								else
+									Redis.new
+								end
+							end
+		end
+
+		def connection_pool_size
+			@connection_pool_size ||= ENV.fetch('CONNECTION_POOL_SIZE', 20)
 		end
 	end
 end
